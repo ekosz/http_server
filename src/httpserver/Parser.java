@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
  * Time: 3:40 PM
  * To change this template use File | Settings | File Templates.
  */
-public class Parser {
+public class Parser implements IParser {
 
     private String uri;
     private String version;

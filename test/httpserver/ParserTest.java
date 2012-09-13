@@ -38,7 +38,7 @@ public class ParserTest {
     public void createsMultiableHeaders() throws Exception {
       String request = "GET / HTTP/1.1\r\nHost: google.com\r\nContent-Length: 10";
       assertEquals("google.com", new Parser(request).headers().get("host"));
-      assertEquals("10", new Parser(request).headers().get("content-length"));
+      assertEquals("10", new Parser(request).headers().get("content-length:"));
     }
 
     @Test
