@@ -29,12 +29,13 @@ public class Parser implements IParser {
 
     private void parseHeaders(String[] strings) {
         if(strings.length == 0) return;
-        Integer i = 0;
-        String line = strings[i];
-        while (!Pattern.matches("^\\s*$", line) && i < strings.length) {
+        int i;
+        for (i=0; i < strings.length; i++) {
+            String line = strings[i];
+            if (Pattern.matches("^\\s*$", line))
+                break;
             String keyVal[] = line.split(":");
             this.headers.put(keyVal[0].toLowerCase(), keyVal[1].trim());
-            line = strings[i++];
         }
         if(i == strings.length) return;
         parseBody(Arrays.copyOfRange(strings, ++i, strings.length));
@@ -46,7 +47,7 @@ public class Parser implements IParser {
 
     private void parseInitialLine(String line) {
         String sections[] = line.split(" ");
-        this.verb = sections[0].toLowerCase();
+        this.verb = sections[0].toUpperCase();
         this.uri = sections[1];
         this.version = sections[2];
     }

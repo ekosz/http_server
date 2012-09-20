@@ -21,6 +21,7 @@ public class Encoder {
         {
             put(200, "OK");
             put(404, "Not Found");
+            put(500, "Internal Server Error");
         }
     };
 
