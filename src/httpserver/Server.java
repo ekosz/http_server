@@ -25,6 +25,9 @@ public class Server {
     public int statusCode;
     public HashMap<String, String> headers;
     private String directory;
+    private Calendar calendar;
+    private IReader reader;
+    private Sleeper sleeper;
 
     public Server(IParser parser, String directoy) {
         this.parser = parser;
@@ -32,6 +35,43 @@ public class Server {
         this.statusCode = 200;
         this.headers = new HashMap<String, String>();
         this.directory = directoy;
+        this.calendar = new GregorianCalendar();
+        this.reader = new Reader();
+        this.sleeper = new Sleeper();
+    }
+
+    public Server(IParser parser, String directory, Calendar calendar) {
+        this.parser = parser;
+        this.body = "";
+        this.statusCode = 200;
+        this.headers = new HashMap<String, String>();
+        this.directory = directory;
+        this.calendar = calendar;
+        this.reader = new Reader();
+        this.sleeper = new Sleeper();
+    }
+
+
+    public Server(IParser parser, String directory, IReader reader) {
+        this.parser = parser;
+        this.body = "";
+        this.statusCode = 200;
+        this.headers = new HashMap<String, String>();
+        this.directory = directory;
+        this.calendar = new GregorianCalendar();
+        this.reader = reader;
+        this.sleeper = new Sleeper();
+    }
+
+    public Server(IParser parser, String directory, Sleeper sleeper) {
+        this.parser = parser;
+        this.body = "";
+        this.statusCode = 200;
+        this.headers = new HashMap<String, String>();
+        this.directory = directory;
+        this.calendar = new GregorianCalendar();
+        this.reader = new Reader();
+        this.sleeper = sleeper;
     }
 
     public void run() {
@@ -50,7 +90,7 @@ public class Server {
         } else if (uri.getPath().equals("/time") && (parser.verb().equals("GET"))) {
             outputTime();
         } else if (uri.getPath().equals("/form") && (parser.verb().equals("GET"))) {
-            displayForm();
+            displayForm(uri);
         } else if (uri.getPath().equals("/form") && (parser.verb().equals("POST") || parser.verb().equals("PUT"))) {
             outputPostData();
         } else {
@@ -87,7 +127,7 @@ public class Server {
 
     private void serveFile(File file) {
         try {
-            this.body = readFile(file);
+            this.body = reader.read(file);
             FileNameMap fileNameMap = URLConnection.getFileNameMap();
             String type = fileNameMap.getContentTypeFor(file.getAbsolutePath());
             this.headers.put("Content-Type", type);
@@ -97,17 +137,11 @@ public class Server {
         }
     }
 
-    private String readFile(File file) throws FileNotFoundException {
-        return new Scanner(file).useDelimiter("\\Z").next();
-    }
-
-    private String readStream(InputStream stream) throws FileNotFoundException {
-        return new Scanner(stream).useDelimiter("\\Z").next();
-    }
-
     private HashMap<String, String> parseQueryString(String query) {
-        String[] params = query.split("&");
         HashMap<String, String> map = new HashMap<String, String>();
+        if (query == null)
+            return map;
+        String[] params = query.split("&");
         for (String param : params) {
             String name = param.split("=")[0];
             String value = param.split("=")[1];
@@ -120,14 +154,9 @@ public class Server {
         this.headers.put("Content-Length", String.valueOf(this.body.length()));
     }
 
-    private void displayForm() {
-        URL url = ClassLoader.getSystemClassLoader().getResource("form.html");
-        try {
-            this.body = readStream(url.openStream());
-        } catch (IOException e) {
-            this.statusCode = 500;
-            this.body = "Could not find form.html to display";
-        }
+    private void displayForm(URI uri) {
+        FormBuilder builder = new FormBuilder(parseQueryString(uri.getQuery()));
+        this.body = builder.build();
     }
 
     private void greet() {
@@ -136,33 +165,23 @@ public class Server {
 
     private void outputTime() {
         try {
-            sleep(1000);
+            sleeper.sleep(1000);
         } catch (InterruptedException e) {
             this.statusCode = 500;
             this.body = "Interrupted!";
             return;
         }
-        Calendar calendar = new GregorianCalendar();
-        this.body = time(calendar.get(calendar.HOUR), calendar.get(calendar.MINUTE), calendar.get(calendar.SECOND), calendar.get(calendar.MILLISECOND));
-    }
-    private String time(Integer hour, Integer min, Integer sec, Integer mili) {
-        return hour + ":" + padded(min) + ":" + padded(sec) + ":" + padded(mili, 3);
-    }
-
-    private String padded(Integer time, Integer length) {
-        String s = String.valueOf(time);
-        while (s.length() < length) {
-            s = "0" + s;
-        }
-        return s;
-    }
-
-    private String padded(Integer time) {
-        return padded(time, 2);
+        this.body = new Time(calendar).currentTime();
     }
 
     private void outputPostData() {
-        this.body = parser.body();
+        String toReturn = "<ul>";
+        for( Map.Entry entry : parseQueryString(parser.body()).entrySet()) {
+            toReturn += "<li>"+entry.getKey()+": "+entry.getValue()+"</li>";
+        }
+        toReturn += "</ul>";
+        this.body = toReturn;
+        this.headers.put("Content-Type", "text/html");
     }
 
     private void fourOhFour() {

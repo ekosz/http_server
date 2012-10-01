@@ -44,8 +44,8 @@ public class ParserTest {
 
     @Test
     public void createsTheProperBody() throws Exception {
-        String request = "GET / HTTP/1.1\r\n\r\nBODY";
-        assertEquals("BODY", new Parser(request).body());
+        String request = "GET / HTTP/1.1\r\n\r\nBODY\nWith multiple lines";
+        assertEquals("BODY\nWith multiple lines", new Parser(request).body());
     }
 
     @Test

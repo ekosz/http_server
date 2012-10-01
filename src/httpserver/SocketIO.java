@@ -34,11 +34,17 @@ public class SocketIO implements IO {
     }
 
     private String readHeaders(String s) throws IOException {
-        String line;
-        while((line = in.readLine()) != null && !line.equals("")) {
+        String line = in.readLine();
+
+        while(hasContent(line)) {
            s += line + "\r\n";
+           line = in.readLine();
         }
         return s + "\r\n";
+    }
+
+    private boolean hasContent(String line) {
+        return line != null && !line.equals("");
     }
 
     private String readBody(String s) throws IOException {

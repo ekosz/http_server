@@ -27,6 +27,9 @@ public class Parser implements IParser {
         parseHeaders(Arrays.copyOfRange(lines, 1, lines.length));
     }
 
+    public Parser() {
+    }
+
     private void parseHeaders(String[] strings) {
         if(strings.length == 0) return;
         int i;
@@ -74,8 +77,6 @@ public class Parser implements IParser {
 
     private String combine(String[] s, String glue) {
         int k = s.length;
-        if (k == 0)
-            return null;
         StringBuilder out = new StringBuilder();
         out.append(s[0]);
         for (int x = 1; x < k; ++x)

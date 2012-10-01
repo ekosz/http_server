@@ -3,10 +3,14 @@ package httpserver;
 import org.junit.*;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Scanner;
+import java.util.regex.Pattern;
 
 import static junit.framework.Assert.assertEquals;
 
@@ -17,7 +21,7 @@ import static junit.framework.Assert.assertEquals;
  * Time: 2:36 PM
  * To change this template use File | Settings | File Templates.
  */
-class ParserMock implements IParser {
+class ParserMock extends Parser {
     private String verb;
     private String uri;
     private String version;
@@ -43,22 +47,42 @@ class ParserMock implements IParser {
     }
 
     @Override
-    public String version() {
-        return version;
-    }
-
-    @Override
-    public HashMap<String, String> headers() {
-        return headers;
-    }
-
-    @Override
     public String body() {
         return body;
     }
 }
 
+class ReaderMock implements IReader {
+
+    @Override
+    public String read(File file) throws FileNotFoundException {
+        throw new FileNotFoundException();
+    }
+
+    @Override
+    public String read(InputStream stream) throws IOException {
+        throw new IOException();
+    }
+}
+
+class SleeperMock extends Sleeper {
+
+    @Override
+    public void sleep(long time) throws InterruptedException {
+        throw new InterruptedException();
+    }
+}
+
 public class ServerTest {
+
+    @Test
+    public void malformedURI() throws Exception {
+        IParser mock = new ParserMock("GET", "/[]", "HTTP/1.1", new HashMap<String, String>(), "");
+        Server server = new Server(mock, "public");
+        server.run();
+        assertEquals("Not a valid URL", server.body);
+        assertEquals(500, server.statusCode);
+    }
 
     @Test
     public void echoBackQueryString() throws Exception {
@@ -78,7 +102,7 @@ public class ServerTest {
 
     @Test
     public void getForm() throws Exception {
-        File file = new File("src/form.html");
+        File file = new File("test/form.html");
         String fileContents = new Scanner(file).useDelimiter("\\Z").next();
         IParser mock = new ParserMock("GET", "/form", "HTTP/1.1", new HashMap<String, String>(), "");
         Server server = new Server(mock, "public");
@@ -87,8 +111,16 @@ public class ServerTest {
     }
 
     @Test
+    public void getFromWithOptions() throws Exception {
+        IParser mock = new ParserMock("GET", "/form?a=1", "HTTP/1.1", new HashMap<String, String>(), "");
+        Server server = new Server(mock, "public");
+        server.run();
+        assertEquals(true, server.body.indexOf("<input id='a' name='a' value='1' type='text' />") > 0);
+    }
+
+    @Test
     public void properContentLength() throws Exception {
-        File file = new File("src/form.html");
+        File file = new File("test/form.html");
         String fileContents = new Scanner(file).useDelimiter("\\Z").next();
         IParser mock = new ParserMock("GET", "/form", "HTTP/1.1", new HashMap<String, String>(), "");
         Server server = new Server(mock, "public");
@@ -105,14 +137,6 @@ public class ServerTest {
     }
 
     @Test
-    public void postContent() throws Exception {
-        IParser mock = new ParserMock("POST", "/form", "HTTP/1.1", new HashMap<String, String>(), "\"My\"=\"Data\"");
-        Server server = new Server(mock, "public");
-        server.run();
-        assertEquals("\"My\"=\"Data\"", server.body);
-    }
-
-    @Test
     public void simpleGet() throws Exception {
         IParser mock = new ParserMock("GET", "/", "HTTP/1.1", new HashMap<String, String>(), "");
         Server server = new Server(mock, "public");
@@ -126,6 +150,15 @@ public class ServerTest {
         Server server = new Server(mock, "public");
         server.run();
         assertEquals(200, server.statusCode);
+    }
+
+    @Test
+    public void makesListFromPostArguments() throws Exception {
+        IParser mock = new ParserMock("POST", "/form", "HTTP/1.1", new HashMap<String, String>(), "a=1");
+        Server server = new Server(mock, "public");
+        server.run();
+        assertEquals(true, server.body.indexOf("<li>a: 1</li>") >= 0);
+        assertEquals("text/html", server.headers.get("Content-Type"));
     }
 
     @Test
@@ -146,6 +179,14 @@ public class ServerTest {
     }
 
     @Test
+    public void serveBadFile() {
+        IParser mock = new ParserMock("GET", "/hello.txt", "HTTP/1.1", new HashMap<String, String>(), "");
+        Server server = new Server(mock, "public", new ReaderMock());
+        server.run();
+        assertEquals(500, server.statusCode);
+    }
+
+    @Test
     public void serveDirectory() {
         IParser mock = new ParserMock("GET", "/", "HTTP/1.1", new HashMap<String, String>(), "");
         Server server = new Server(mock, "public");
@@ -153,5 +194,21 @@ public class ServerTest {
         assertEquals("<div><a href=\"/go_here\">go_here</a></div><div><a href=\"/hello.txt\">hello.txt</a></div>",
                      server.body);
         assertEquals("text/html", server.headers.get("Content-Type"));
+    }
+
+    @Test
+    public void outputTime() {
+        IParser mock = new ParserMock("GET", "/time", "HTTP/1.1", new HashMap<String, String>(), "");
+        Server server = new Server(mock, "public", new CalendarMock());
+        server.run();
+        assertEquals("2:03:04:005", server.body);
+    }
+
+    @Test
+    public void handlesInterupt() throws Exception {
+        IParser mock = new ParserMock("GET", "/time", "HTTP/1.1", new HashMap<String, String>(), "");
+        Server server = new Server(mock, "public", new SleeperMock());
+        server.run();
+        assertEquals(500, server.statusCode);
     }
 }
