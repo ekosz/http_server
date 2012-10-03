@@ -1,0 +1,21 @@
+* { -moz-box-sizing: border-box; -webkit-box-sizing: border-box; box-sizing: border-box; }
+
+.board {
+  width: 501px;
+  margin: 50px auto;
+}
+
+.cell {
+  display: inline-block;
+  width: 33.3333333333333%;
+  padding: auto;
+  font-size: 2em;
+}
+
+.row {
+  height: 100px;
+}
+
+form {
+  display: none;
+}
